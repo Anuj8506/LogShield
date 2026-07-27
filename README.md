@@ -4,8 +4,10 @@ A real-time SSH security log monitoring system that connects to a Linux server v
 
 Built solo as a portfolio project to demonstrate systems thinking, full-stack engineering, and the ability to ship a real security tool that catches real attackers.
 
-**🔗 Live Dashboard:** [logshield-production-b274.up.railway.app](https://logshield-production-b274.up.railway.app)
+**🔗 Live Dashboard:** [logshield.onrender.com](https://logshield.onrender.com)
 **🔗 Repo:** [github.com/Anuj8506/LogShield](https://github.com/Anuj8506/LogShield)
+
+> ⚠️ **Cold start note:** The backend is hosted on Render's free tier, which spins down after periods of inactivity. The first request after idle time can take 30–50 seconds to wake the server up. Subsequent requests are fast.
 
 ---
 
@@ -22,6 +24,7 @@ Built solo as a portfolio project to demonstrate systems thinking, full-stack en
 
 ### Telegram — Instant alert fired to phone the moment attack is detected
 <img src="./assets/telegram.jpeg" width="350" alt="Telegram Alert"/>
+
 ---
 
 ## 🧭 Why this project
@@ -32,10 +35,12 @@ LogShield solves this by reading the server's own auth log in real time, detecti
 
 The Romanian IP `193.32.162.15` in the screenshots above has been reported **747 times** on AbuseIPDB. LogShield caught it automatically within seconds of the 5th failed attempt.
 
+---
+
 ## 🏗️ Architecture
 
 ```
-Oracle Linux Server          Railway (Node.js)
+Oracle Linux Server          Render (Node.js)
 /var/log/auth.log   →SSH→   LogShield Auditor
                                     ↓
                             ┌───────┴───────┐
@@ -50,6 +55,8 @@ Oracle Linux Server          Railway (Node.js)
                       (live updates)
 ```
 
+---
+
 ## ⚙️ Tech Stack
 
 | Layer | Technology | Purpose |
@@ -61,8 +68,9 @@ Oracle Linux Server          Railway (Node.js)
 | IP Intel | AbuseIPDB API | Abuse confidence score and report count |
 | Geolocation | ipinfo API | Country, city, ISP of attacker |
 | Alerts | Telegram Bot API | Instant phone notification on attack |
-| Frontend | React + Tailwind CSS + Vite | Live dashboard |
-| Deployment | Railway | 24/7 cloud hosting |
+| Frontend | React + Tailwind CSS + Vite | Live dashboard with custom SVG icons |
+| Icons | Custom inline SVG | ShieldIcon, AlertIcon, ThreatIcon, RiskIcon, LiveIcon, SearchIcon — no icon library dependency |
+| Deployment | Render | 24/7 cloud hosting |
 
 ---
 
@@ -71,9 +79,11 @@ Oracle Linux Server          Railway (Node.js)
 ### 1. Log Parser
 Raw auth.log lines are converted into structured objects using regex:
 
+```
 Jul 24 09:15:32 server sshd: Failed password for root from 193.32.162.15 port 4822 ssh2
 ↓
 { ip: '193.32.162.15', user: 'root', type: 'failed_password', timestamp: '...' }
+```
 
 Three line types are parsed: `failed_password`, `invalid_user`, and `accepted_password`. Everything else is ignored.
 
@@ -95,7 +105,9 @@ When an attack is flagged, two API calls run in parallel via `Promise.all`:
 Running them in parallel cuts enrichment time roughly in half vs. sequential calls.
 
 ### 4. Alert Pipeline
+```
 Attack flagged → enrich IP → save to MongoDB → send Telegram → broadcast via WebSocket
+```
 
 The dashboard receives the alert via WebSocket and inserts it at the top of the table without any page refresh.
 
@@ -110,6 +122,7 @@ The dashboard receives the alert via WebSocket and inserts it at the top of the 
 - MongoDB persistence for historical analysis
 - REST API for alerts, whitelist, and blacklist management
 - React dashboard with live WebSocket updates, search, and filter
+- Custom inline SVG icons — no external icon library required
 - Mock SSH mode for local development without a real server
 - Base64 SSH key support for cloud deployment
 
@@ -150,8 +163,11 @@ LogPulse (a prior project) used Redis for sliding window rate limiting. LogShiel
 **Why `Promise.all` for IP enrichment?**
 AbuseIPDB and ipinfo are independent — neither depends on the other's result. Running them sequentially would add ~500ms of unnecessary wait time per alert. `Promise.all` fires both simultaneously and waits for both, cutting enrichment latency roughly in half.
 
-**Why base64 for the SSH private key on Railway?**
-Railway doesn't support file uploads — only environment variables. Private keys are multi-line files. Base64 encoding converts the key to a single-line string that can be stored as an env var and decoded back at runtime with `Buffer.from(key, 'base64').toString('utf-8')`.
+**Why custom inline SVG icons instead of an icon library?**
+Icon libraries like lucide-react or heroicons add ~50KB+ to the bundle. LogShield only needs 6 icons — ShieldIcon, AlertIcon, ThreatIcon, RiskIcon, LiveIcon, and SearchIcon. Writing them inline as React components costs nothing, loads instantly, and keeps the bundle lean.
+
+**Why base64 for the SSH private key on Render?**
+Render doesn't support file uploads — only environment variables. Private keys are multi-line files. Base64 encoding converts the key to a single-line string that can be stored as an env var and decoded back at runtime with `Buffer.from(key, 'base64').toString('utf-8')`.
 
 ---
 
@@ -236,6 +252,8 @@ cd .. && node src/index.js
 
 Open `http://localhost:3000`
 
+---
+
 ## 📁 Project Structure
 
 ```
@@ -262,17 +280,19 @@ LogShield/
 │   └── auditor.js              # Main pipeline
 ├── frontend/
 │   └── src/
-│       └── App.jsx             # React dashboard
-├── railway.json                # Railway deployment config
+│       └── App.jsx             # React dashboard with inline SVG icons
+├── assets/                     # README screenshots
 └── package.json
 ```
 
+---
+
 ## 🔮 What's Next
 
-- Oracle Cloud firewall open → real SSH attacks detected on Railway dashboard
 - Whitelist/blacklist UI in the dashboard
 - Email alerts as an alternative to Telegram
 - Port scan detection (currently only brute force)
+- Multi-server monitoring support
 
 ---
 
