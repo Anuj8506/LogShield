@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Secrets — NEVER push this to GitHub
+.env
+
+# Local log cache
+logs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+
+
+oracle_key.pem
