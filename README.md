@@ -4,7 +4,7 @@ A real-time SSH security log monitoring system that connects to a Linux server v
 
 Built solo as a portfolio project to demonstrate systems thinking, full-stack engineering, and the ability to ship a real security tool that catches real attackers.
 
-**🔗 Live Dashboard:** [logshield.onrender.com](https://logshield.onrender.com)
+**🔗 Live Dashboard:** [https://logshield-6qum.onrender.com/](https://logshield-6qum.onrender.com/)
 **🔗 Repo:** [github.com/Anuj8506/LogShield](https://github.com/Anuj8506/LogShield)
 
 > ⚠️ **Cold start note:** The backend is hosted on Render's free tier, which spins down after periods of inactivity. The first request after idle time can take 30–50 seconds to wake the server up. Subsequent requests are fast.
