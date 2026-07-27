@@ -20,7 +20,6 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://logshield-production.up.railway.app'
   ],
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   credentials: true
