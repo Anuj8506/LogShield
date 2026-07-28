@@ -11,6 +11,7 @@ const { parseLine } = require('./parsers/logParser');
 const { analyze } = require('./detectors/anomalyDetector');
 const { enrichIP } = require('./services/ipIntel');
 const { sendAlert } = require('./services/telegramNotifier');
+const Blacklist = require('./models/Blacklist');
 const { broadcast } = require('./api/websocket');
 const Alert = require('./models/Alert');
 
@@ -52,7 +53,23 @@ const startAuditor = () => {
     // Step 5 — Send Telegram alert
     await sendAlert(fullAlert);
 
-    // Step 6 — Save to MongoDB
+    // Step 6 — Auto blacklist if abuse score is 100
+    if (fullAlert.abuseScore === 100) {
+      try {
+        const existing = await Blacklist.findOne({ ip: fullAlert.ip });
+        if (!existing) {
+          await Blacklist.create({
+            ip: fullAlert.ip,
+            reason: 'Attacker'
+          });
+          console.log(`Auto blacklisted IP: ${fullAlert.ip} (abuse score 100)`);
+        }
+      } catch (error) {
+        console.error('Auto blacklist error:', error.message);
+      }
+    }
+
+    // Step 7 — Save to MongoDB
     try {
       const alertDoc = new Alert({
         ip: fullAlert.ip,

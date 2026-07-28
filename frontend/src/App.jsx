@@ -62,6 +62,63 @@ const SearchIcon = () => (
   </svg>
 );
 
+const BanIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </svg>
+);
+
+// ── Blacklist Modal ───────────────────────────────────────────
+const BlacklistModal = ({ ip, onConfirm, onCancel }) => {
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    await onConfirm(ip, reason || "Manually blacklisted from dashboard");
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Blacklist IP</h3>
+        <p className="text-gray-400 text-sm mb-5">
+          This will add <span className="font-mono text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{ip}</span> to the blacklist.
+        </p>
+
+        <label className="block text-xs font-medium text-gray-600 uppercase tracking-widest mb-2">
+          Reason (optional)
+        </label>
+        <input
+          type="text"
+          placeholder="e.g. Repeated brute force attacks"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg px-4 py-2.5 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-colors mb-5"
+        />
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Blacklisting..." : "Blacklist IP"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Stat Card ─────────────────────────────────────────────────
 const StatCard = ({ title, value, icon, accent, sub }) => (
   <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
@@ -75,49 +132,67 @@ const StatCard = ({ title, value, icon, accent, sub }) => (
 );
 
 // ── Alert Row ─────────────────────────────────────────────────
-const AlertRow = ({ alert }) => (
-  <tr className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors">
-    <td className="py-3.5 px-5">
-      <span className="font-mono text-sm text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded">
-        {alert.ip}
-      </span>
-    </td>
-    <td className="py-3.5 px-5">
-      <div className="flex flex-col">
-        <span className="text-gray-900 text-sm font-medium">{alert.city}</span>
-        <span className="text-gray-400 text-xs">{alert.country}</span>
-      </div>
-    </td>
-    <td className="py-3.5 px-5">
-      <span className={`text-sm font-bold px-2.5 py-1 rounded font-mono ${getScoreBg(alert.abuseScore)}`}>
-        {alert.abuseScore}/100
-      </span>
-    </td>
-    <td className="py-3.5 px-5">
-      <span className="text-gray-900 text-sm font-semibold">{alert.attempts}</span>
-      <span className="text-gray-400 text-xs ml-1">attempts</span>
-    </td>
-    <td className="py-3.5 px-5">
-      <span className={`text-xs font-semibold px-2.5 py-1 rounded uppercase tracking-wide ${getAttackBadge(alert.attackType)}`}>
-        {alert.attackType?.replace(/_/g, " ")}
-      </span>
-    </td>
-    <td className="py-3.5 px-5">
-      <div className="flex flex-col">
-        <span className="text-gray-900 text-sm">{new Date(alert.timestamp).toLocaleDateString()}</span>
-        <span className="text-gray-400 text-xs">{new Date(alert.timestamp).toLocaleTimeString()}</span>
-      </div>
-    </td>
-    <td className="py-3.5 px-5">
-      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${alert.resolved
-        ? "bg-green-50 border-green-300 text-green-700"
-        : "bg-red-50 border-red-300 text-red-600"
-        }`}>
-        {alert.resolved ? "Resolved" : "Active"}
-      </span>
-    </td>
-  </tr>
-);
+const AlertRow = ({ alert, blacklistedIPs, onBlacklist }) => {
+  const isBlacklisted = blacklistedIPs.has(alert.ip);
+
+  return (
+    <tr className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors">
+      <td className="py-3.5 px-5">
+        <span className="font-mono text-sm text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded">
+          {alert.ip}
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        <div className="flex flex-col">
+          <span className="text-gray-900 text-sm font-medium">{alert.city}</span>
+          <span className="text-gray-400 text-xs">{alert.country}</span>
+        </div>
+      </td>
+      <td className="py-3.5 px-5">
+        <span className={`text-sm font-bold px-2.5 py-1 rounded font-mono ${getScoreBg(alert.abuseScore)}`}>
+          {alert.abuseScore}/100
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        <span className="text-gray-900 text-sm font-semibold">{alert.attempts}</span>
+        <span className="text-gray-400 text-xs ml-1">attempts</span>
+      </td>
+      <td className="py-3.5 px-5">
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded uppercase tracking-wide ${getAttackBadge(alert.attackType)}`}>
+          {alert.attackType?.replace(/_/g, " ")}
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        <div className="flex flex-col">
+          <span className="text-gray-900 text-sm">{new Date(alert.timestamp).toLocaleDateString()}</span>
+          <span className="text-gray-400 text-xs">{new Date(alert.timestamp).toLocaleTimeString()}</span>
+        </div>
+      </td>
+      <td className="py-3.5 px-5">
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${alert.resolved
+          ? "bg-green-50 border-green-300 text-green-700"
+          : "bg-red-50 border-red-300 text-red-600"
+          }`}>
+          {alert.resolved ? "Resolved" : "Active"}
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        {isBlacklisted ? (
+          <span className="flex items-center gap-1 text-xs font-semibold text-gray-400 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-full">
+            <BanIcon /> Blacklisted
+          </span>
+        ) : (
+          <button
+            onClick={() => onBlacklist(alert.ip)}
+            className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-100 transition-colors"
+          >
+            <BanIcon /> Blacklist
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+};
 
 // ── Main App ──────────────────────────────────────────────────
 export default function App() {
@@ -126,8 +201,12 @@ export default function App() {
   const [liveCount, setLiveCount] = useState(0);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [blacklistedIPs, setBlacklistedIPs] = useState(new Set());
+  const [modalIP, setModalIP] = useState(null);
+  const [toast, setToast] = useState(null);
   const wsRef = useRef(null);
 
+  // ── Fetch alerts ─────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/alerts")
       .then((res) => res.json())
@@ -135,24 +214,75 @@ export default function App() {
       .catch((err) => console.error("Failed to fetch alerts:", err));
   }, []);
 
+  // ── Fetch existing blacklist ──────────────────────────────────
   useEffect(() => {
-    const wsUrl = window.location.protocol === 'https:' 
-      ? `wss://${window.location.host}`
-      : `ws://${window.location.hostname}:3000`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "new_alert") {
-        setAlerts((prev) => [message.data, ...prev]);
-        setLiveCount((prev) => prev + 1);
-      }
-    };
-    ws.onclose = () => setConnected(false);
-    return () => ws.close();
+    fetch("/api/blacklist")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setBlacklistedIPs(new Set(data.data.map((b) => b.ip)));
+        }
+      })
+      .catch((err) => console.error("Failed to fetch blacklist:", err));
   }, []);
 
+  // ── WebSocket ─────────────────────────────────────────────────
+  useEffect(() => {
+    let ws;
+    let reconnectTimeout;
+
+    const connect = () => {
+      const wsUrl = window.location.protocol === "https:"
+        ? `wss://${window.location.host}`
+        : `ws://${window.location.hostname}:3000`;
+
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => setConnected(true);
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "new_alert") {
+          setAlerts((prev) => [message.data, ...prev]);
+          setLiveCount((prev) => prev + 1);
+        }
+      };
+      ws.onclose = () => {
+        setConnected(false);
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
+  }, []);
+
+  // ── Blacklist handler ─────────────────────────────────────────
+  const handleBlacklistConfirm = async (ip, reason) => {
+    try {
+      const res = await fetch("/api/blacklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip, reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBlacklistedIPs((prev) => new Set([...prev, ip]));
+        setToast({ type: "success", message: `${ip} has been blacklisted` });
+      } else {
+        setToast({ type: "error", message: "Failed to blacklist IP" });
+      }
+    } catch {
+      setToast({ type: "error", message: "Network error — try again" });
+    }
+    setModalIP(null);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // ── Stats ─────────────────────────────────────────────────────
   const totalAlerts = alerts.length;
   const activeAlerts = alerts.filter((a) => !a.resolved).length;
   const highRiskAlerts = alerts.filter((a) => a.abuseScore >= 80).length;
@@ -172,6 +302,25 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+
+      {/* ── Blacklist Modal ─────────────────────────────────── */}
+      {modalIP && (
+        <BlacklistModal
+          ip={modalIP}
+          onConfirm={handleBlacklistConfirm}
+          onCancel={() => setModalIP(null)}
+        />
+      )}
+
+      {/* ── Toast Notification ──────────────────────────────── */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-semibold ${toast.type === "success"
+          ? "bg-green-600 text-white"
+          : "bg-red-600 text-white"
+          }`}>
+          {toast.message}
+        </div>
+      )}
 
       {/* ── Navbar ─────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -208,34 +357,10 @@ export default function App() {
         <section>
           <p className="text-gray-400 text-xs uppercase tracking-widest mb-4 font-medium">Overview</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Total Alerts"
-              value={totalAlerts}
-              icon={<AlertIcon />}
-              accent="text-gray-900"
-              sub="All time records"
-            />
-            <StatCard
-              title="Active Threats"
-              value={activeAlerts}
-              icon={<ThreatIcon />}
-              accent="text-yellow-600"
-              sub="Unresolved incidents"
-            />
-            <StatCard
-              title="High Risk IPs"
-              value={highRiskAlerts}
-              icon={<RiskIcon />}
-              accent="text-red-600"
-              sub="Abuse score ≥ 80"
-            />
-            <StatCard
-              title="Live Alerts"
-              value={liveCount}
-              icon={<LiveIcon />}
-              accent="text-blue-600"
-              sub="This session"
-            />
+            <StatCard title="Total Alerts" value={totalAlerts} icon={<AlertIcon />} accent="text-gray-900" sub="All time records" />
+            <StatCard title="Active Threats" value={activeAlerts} icon={<ThreatIcon />} accent="text-yellow-600" sub="Unresolved incidents" />
+            <StatCard title="High Risk IPs" value={highRiskAlerts} icon={<RiskIcon />} accent="text-red-600" sub="Abuse score ≥ 80" />
+            <StatCard title="Live Alerts" value={liveCount} icon={<LiveIcon />} accent="text-blue-600" sub="This session" />
           </div>
         </section>
 
@@ -282,7 +407,7 @@ export default function App() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {["IP Address", "Location", "Abuse Score", "Attempts", "Attack Type", "Time", "Status"].map((h) => (
+                  {["IP Address", "Location", "Abuse Score", "Attempts", "Attack Type", "Time", "Status", "Action"].map((h) => (
                     <th key={h} className="py-3 px-5 text-left text-gray-400 text-xs uppercase tracking-widest font-medium">
                       {h}
                     </th>
@@ -292,7 +417,7 @@ export default function App() {
               <tbody>
                 {filteredAlerts.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-16 text-center">
+                    <td colSpan="8" className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <ShieldIcon />
                         <p className="text-gray-400 text-sm">No attacks detected</p>
@@ -301,8 +426,13 @@ export default function App() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAlerts.map((alert, i) => (
-                    <AlertRow key={alert._id} alert={alert} index={i} />
+                  filteredAlerts.map((alert) => (
+                    <AlertRow
+                      key={alert._id}
+                      alert={alert}
+                      blacklistedIPs={blacklistedIPs}
+                      onBlacklist={(ip) => setModalIP(ip)}
+                    />
                   ))
                 )}
               </tbody>
